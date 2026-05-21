@@ -2,124 +2,139 @@ const taskInput = document.getElementById("task-input");
 const taskList = document.getElementById("task-list");
 const placeholder = document.getElementById("empty-state");
 
-// Load tasks from localStorage on page load
-const loadTasks = () => {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    if (tasks.length === 0) {
-        placeholder.style.display = "flex";  // Show empty state if no tasks
-    } else {
-        placeholder.style.display = "none";  // Hide placeholder
-        tasks.forEach(task => createTaskElement(task.text, task.completed));
-    }
-};
+// Load tasks when page loads
+document.addEventListener("DOMContentLoaded", loadTasks);
 
-// Handle form submission to add a new task
+// Load tasks from localStorage
+function loadTasks() {
+
+    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+    if (tasks.length === 0) {
+        placeholder.style.display = "flex";
+    } else {
+        placeholder.style.display = "none";
+    }
+
+    tasks.forEach(task => {
+        createTaskElement(task.text, task.completed);
+    });
+}
+
+// Handle form submit
 const handleSubmit = (e) => {
     e.preventDefault();
     handleAddTask();
 };
 
-// Add task from input
+// Add task
 const handleAddTask = () => {
-    const taskText = taskInput.value.trim();  // Trim input value to avoid empty spaces
-    if (taskText) {
-        createTaskElement(taskText);  // Create task element
-        taskInput.value = "";  // Clear the input field after adding
-    }
+
+    const taskText = taskInput.value.trim();
+
+    if (taskText === "") return;
+
+    createTaskElement(taskText);
+
+    saveTask(taskText);
+
+    taskInput.value = "";
 };
 
-// Create a task element and append it to the list
+// Create task UI
 const createTaskElement = (taskText, isCompleted = false) => {
+
+    placeholder.style.display = "none";
+
     const li = document.createElement("li");
-    
-    // Create a span for the task text
+    li.classList.add("task-item");
+
+    // Task Text
     const taskSpan = document.createElement("span");
     taskSpan.textContent = taskText;
-    taskSpan.classList.add("task-text");  // Add class for styling if needed
-
-    // Create checkmark symbol
-    const checkIcon = document.createElement("span");
-    checkIcon.innerHTML = "&#x2713;";  // Checkmark symbol
-    checkIcon.style.display = isCompleted ? "inline" : "none";  // Show if completed 
-    checkIcon.classList.add("check-icon");
-
-    // Append checkmark and task text to the list item
-    li.appendChild(checkIcon);
-    li.appendChild(taskSpan);
-
-    // Create delete button
-    const deleteButton = createDeleteButton(li);
-
-    // Append delete button to the list item
-    li.appendChild(deleteButton);
 
     if (isCompleted) {
-        li.classList.add("completed");  // Mark as completed if needed
+        taskSpan.style.textDecoration = "line-through";
     }
 
-    li.onclick = () => toggleCompleteTask(li, checkIcon);  // Toggle completion on click
+    // Complete Button
+    const completeBtn = document.createElement("button");
+    completeBtn.textContent = "Done";
+    completeBtn.classList.add("complete-btn");
+
+    completeBtn.addEventListener("click", () => {
+
+        taskSpan.classList.toggle("completed");
+
+        updateTaskStatus(taskText);
+    });
+
+    // Delete Button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.classList.add("delete-btn");
+
+    deleteBtn.addEventListener("click", () => {
+
+        li.remove();
+
+        deleteTask(taskText);
+
+        checkEmptyState();
+    });
+
+    // Append Elements
+    li.appendChild(taskSpan);
+    li.appendChild(completeBtn);
+    li.appendChild(deleteBtn);
 
     taskList.appendChild(li);
-
-    updateLocalStorage();  // Update localStorage
-    updatePlaceholder();  // Update placeholder visibility
 };
 
-// Create delete button for each task
-const createDeleteButton = (li) => {
-    const deleteButton = document.createElement("button");
-    deleteButton.innerHTML = "&times;";  // X icon for delete
-    deleteButton.classList.add("delete-task");
+// Save task to localStorage
+const saveTask = (taskText) => {
 
-    // Delete the task on button click
-    deleteButton.onclick = (e) => {
-        e.stopPropagation();  // Prevent event bubbling
-        deleteTask(li);  // Remove the task
-    };
+    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
-    return deleteButton;
+    tasks.push({
+        text: taskText,
+        completed: false
+    });
+
+    localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
-// Toggle task completion state
-const toggleCompleteTask = (li, checkIcon) => {
-    li.classList.toggle("completed");  // Toggle completed class
-    checkIcon.style.display = li.classList.contains("completed") ? "inline" : "none";  // Toggle checkmark display
+// Delete task
+const deleteTask = (taskText) => {
 
-    updateLocalStorage();  // Save the updated state in localStorage
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+    tasks = tasks.filter(task => task.text !== taskText);
+
+    localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
-// Delete a task and update localStorage
-const deleteTask = (li) => {
-    li.remove();  // Remove task element from the DOM
-    updateLocalStorage();  // Update localStorage with new task list
-    updatePlaceholder();  // Update placeholder visibility
+// Update completed status
+const updateTaskStatus = (taskText) => {
+
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+    tasks = tasks.map(task => {
+
+        if (task.text === taskText) {
+            task.completed = !task.completed;
+        }
+
+        return task;
+    });
+
+    localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
-// Save the task list to localStorage
-const updateLocalStorage = () => {
-    const tasks = [...document.querySelectorAll("li")].map(li => ({
-        text: li.querySelector(".task-text").textContent,  // Get task text
-        completed: li.classList.contains("completed"),  // Check completion status
-    }));
-    localStorage.setItem("tasks", JSON.stringify(tasks));  // Save tasks to localStorage
-};
+// Show empty state
+const checkEmptyState = () => {
 
-// Update placeholder visibility depending on task list
-const updatePlaceholder = () => {
     if (taskList.children.length === 0) {
-        placeholder.style.display = "block";  // Show placeholder if no tasks
-    } else {
-        placeholder.style.display = "none";  // Hide placeholder if tasks exist
+        placeholder.style.display = "flex";
     }
 };
-
-// Add task on Enter key press
-taskInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        handleAddTask();
-    }
-});
-
-// Load tasks on page load
-loadTasks();
